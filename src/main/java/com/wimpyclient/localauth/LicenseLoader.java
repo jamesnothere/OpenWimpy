@@ -2,7 +2,6 @@ package com.wimpyclient.localauth;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -10,26 +9,20 @@ import java.util.HexFormat;
 import java.util.function.BiConsumer;
 
 /**
- * Clean reimplementation of the license transport.
+ * Local license transport.
  *
- * The encrypted payload is replaced by a pre-decrypted zip bundled in this jar as
- * {@code /wimpy-payload.bin}. Activation mounts it through the stock payload
- * mounter ({@link d}), so the rest of the mod (payload classes, entrypoints,
- * Fabric wiring) behaves exactly as it does with a legitimately activated key.
- *
- * Session verification, heartbeats and server round-trips are no-ops: there is
- * no server left to talk to.
+ * The original client decrypted and mounted an encrypted payload zip at
+ * activation time. In this build the payload classes are already present in
+ * the source tree, so activation is purely local state: no download, no
+ * decryption, no mounting. Session verification and heartbeats are no-ops.
  */
 public final class LicenseLoader {
-
-    /** Bundled, already-decrypted payload zip. */
-    private static final String PAYLOAD_RESOURCE = "/wimpy-payload.bin";
 
     /** Far-future expiry (2100-01-01T00:00:00Z), epoch seconds. */
     private static final long PERPETUAL_EXPIRY = 4102444800L;
 
     /** Tier reported to feature gates. */
-    private static final String TIER = "free";
+    private static final String TIER = "paid";
 
     private static volatile boolean loaded;
     private static volatile boolean mounted;
@@ -38,8 +31,6 @@ public final class LicenseLoader {
     private static volatile long expiresAt;
     private static volatile String tier;
     private static volatile byte[] activeKeyHash;
-    private static String payloadDigest = "";
-    private static long payloadSize;
 
     /** Watermark, printed once on first activation. */
     private static final String WATERMARK = "WimpyClient 1.0.18 :: Cracked By JamesNotHere \u2764\uFE0F";
@@ -89,16 +80,8 @@ public final class LicenseLoader {
         notify(progress, "Downloading client", 12);
         notify(progress, "Decrypting client", 90);
 
-        byte[] payload = readBundledPayload();
-        // This source tree already contains the (pre-decrypted) payload classes;
-        // the outer loader's initPayload() wires the entrypoint. Validate the
-        // bundled archive so a broken build fails loudly, then flip state.
-        if (payload.length == 0) {
-            throw new IllegalStateException("Bundled payload is empty");
-        }
+        // Payload classes ship with this build; nothing to download or decrypt.
         mounted = true;
-        payloadDigest = sha256Hex(payload);
-        payloadSize = payload.length;
 
         notify(progress, "Loading classes", 95);
         notify(progress, "Starting client", 98);
@@ -206,18 +189,6 @@ public final class LicenseLoader {
     private static void notify(BiConsumer<String, Integer> progress, String message, int code) {
         if (progress != null) {
             progress.accept(message, code);
-        }
-    }
-
-    private static byte[] readBundledPayload() {
-        InputStream in = LicenseLoader.class.getResourceAsStream(PAYLOAD_RESOURCE);
-        if (in == null) {
-            throw new IllegalStateException("Bundled payload missing: " + PAYLOAD_RESOURCE);
-        }
-        try (in) {
-            return in.readAllBytes();
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to read bundled payload", e);
         }
     }
 
