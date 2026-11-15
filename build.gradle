@@ -1,0 +1,43 @@
+plugins {
+    id 'fabric-loom' version '1.17.21'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // bundled NanoVG (also shipped as nested jars under META-INF/jars)
+    implementation files('src/main/resources/META-INF/jars/lwjgl-nanovg-3.3.3.jar')
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.warnings = false
+    options.compilerArgs << '-Xmaxerrs' << '10000'
+}
+
+jar {
+    manifest {
+        attributes(
+            'Manifest-Version': '1.0',
+            'Cracked-By': 'JamesNotHere',
+            'Cracked-From': 'wimpyclient-1.0.18.jar'
+        )
+    }
+}
